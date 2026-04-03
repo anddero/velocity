@@ -7,10 +7,10 @@
 
 ## 0 · Project Setup
 
-- [ ] Initialize Android project with Gradle (Kotlin DSL), min SDK 26, target SDK 35
-- [ ] Configure landscape-only orientation and fullscreen (no action bar) in manifest and styles
-- [ ] Create `VelocityActivity` with a `GLSurfaceView` as the main content view
-- [ ] Verify the app launches to a blank GL screen on a device or emulator
+- [x] Initialize Android project with Gradle (Kotlin DSL), min SDK 26, target SDK 35
+- [x] Configure landscape-only orientation and fullscreen (no action bar) in manifest and styles
+- [x] Create `VelocityActivity` with a `GLSurfaceView` as the main content view
+- [x] Verify the app launches to a blank GL screen on a device or emulator
 
 ## 1 · Math Utilities
 
@@ -138,6 +138,7 @@
 ## 20 · Title Screen
 
 - [ ] Design a simple title screen layout ("Velocity" title, "Tap to Start" prompt)
+- [ ] Use the spinning triangle as a loading/splash visual on the title screen
 - [ ] Show the title overlay when phase is TITLE
 - [ ] Transition to PLAYING on tap
 - [ ] Add an "Exit" button that closes the app
