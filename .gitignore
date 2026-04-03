@@ -1,3 +1,12 @@
 .idea/
 *.iml
 
+# Gradle
+.gradle/
+build/
+local.properties
+
+# Android
+app/build/
+*.apk
+*.aab
