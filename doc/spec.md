@@ -15,7 +15,8 @@
 5. [Game Loop & Scoring](#5-game-loop--scoring)
 6. [Performance Targets](#6-performance-targets)
 7. [Future Features (Phase 2+)](#7-future-features-phase-2)
-8. [Constraints & Assumptions](#8-constraints--assumptions)
+8. [Architecture Requirements for Testability](#8-architecture-requirements-for-testability)
+9. [Constraints & Assumptions](#9-constraints--assumptions)
 
 ---
 
@@ -239,7 +240,27 @@ The tunnel cross-section can morph from a closed polygon to an open arch, a half
 
 ---
 
-## 8. Constraints & Assumptions
+## 8. Architecture Requirements for Testability
+
+These requirements apply to the implementation approach from Phase 1 onward, even when a feature is not yet user-facing.
+
+| # | Requirement |
+|---|---|
+| AR1 | **Controller layer must be mockable.** Game control input (tilt/touch, future autopilot, replay input) must be consumed through an interface so tests and tools can inject synthetic control values. |
+| AR2 | **View layer must be replaceable.** The core simulation/gameplay logic must not depend directly on OpenGL rendering classes so alternate views (headless simulation, debug renderer, future engine backend) can run without logic changes. |
+| AR3 | **Headless simulation support.** The game must support running deterministic no-render simulations to validate terrain/obstacle generation and detect impossible or unfair scenarios before shipping tuning changes. |
+| AR4 | **Autopilot control path.** A future autopilot mode must use the same mockable controller interface as human input, effectively "mocking player input" in real time rather than using privileged movement shortcuts. |
+| AR5 | **Death-screen teaching preview.** The architecture must allow showing a short post-failure autopilot preview demonstrating a viable pass through the failure segment using the same gameplay rules. |
+
+### 8.1 Simulation Fairness Goal
+
+- Procedural content should be testable offline with large seeded batches.
+- A generation/tuning change is considered unsafe if simulations repeatedly detect no feasible path under configured input limits.
+- Simulation outputs should be reproducible from a run seed and difficulty settings.
+
+---
+
+## 9. Constraints & Assumptions
 
 | # | Constraint |
 |---|---|
@@ -250,6 +271,8 @@ The tunnel cross-section can morph from a closed polygon to an open arch, a half
 | C5 | No monetisation, ads, or IAP in MVP. |
 | C6 | No third-party game engine in the recommended approach (raw OpenGL ES). |
 | C7 | Must run without Google Play Services (no hard dependency). |
+| C8 | Core game logic must be runnable without a graphics surface for simulation/testing. |
+| C9 | Input handling must support interchangeable providers (human, replay, autopilot). |
 
 | # | Assumption |
 |---|---|

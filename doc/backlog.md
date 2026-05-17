@@ -94,6 +94,12 @@
 - [ ] Apply low-pass filter, deadzone, and normalization to raw sensor values
 - [ ] Expose a thread-safe lateral input value (−1.0 … +1.0) via `AtomicReference`
 
+## 13.1 · Controller Port Abstraction
+
+- [ ] Introduce a `ControlInputPort` interface consumed by `GameLoop` instead of direct sensor access
+- [ ] Implement `SensorInputController` and `TouchInputController` as interchangeable `ControlInputPort` implementations
+- [ ] Add unit tests that inject scripted controller input to verify deterministic player movement behavior
+
 ## 14 · Input — Touch Fallback
 
 - [ ] Implement touch drag input as a fallback (drag left/right from screen center)
@@ -135,6 +141,12 @@
 - [ ] Optionally display speed multiplier (top-right) during PLAYING
 - [ ] Hide HUD elements when not in PLAYING phase
 
+## 19.1 · View Port Abstraction
+
+- [ ] Introduce a `GameViewPort` interface so the core simulation can render through interchangeable view implementations
+- [ ] Adapt the OpenGL renderer to consume immutable frame snapshots from game state
+- [ ] Add a `HeadlessSimulationView` no-op implementation for non-visual simulation runs
+
 ## 20 · Title Screen
 
 - [ ] Design a simple title screen layout ("Velocity" title, "Tap to Start" prompt)
@@ -165,6 +177,18 @@
 - [ ] Use a random seed per run in infinite mode
 - [ ] Verify that the same seed produces the same tunnel
 
+## 23.1 · Fairness Simulation Harness
+
+- [ ] Build a headless `SimulationRunner` that executes fixed-timestep runs over seeded procedural generation
+- [ ] Add fairness metrics (survival distance, unavoidable collision detection, narrow-gap frequency)
+- [ ] Add a repeatable batch simulation task to validate generator tuning changes before release
+
+## 23.2 · Autopilot Foundation
+
+- [ ] Define an `AutopilotController` that outputs lateral input through `ControlInputPort`
+- [ ] Implement a first-pass `PathSolver` for short-horizon feasible path estimation
+- [ ] Verify autopilot uses identical movement and collision rules as player input
+
 ## 24 · Performance Profiling & Polish
 
 - [ ] Profile frame rate on a mid-range device — target stable 60 fps
@@ -181,6 +205,12 @@
 - [ ] Tune obstacle sizing and spacing for fair gameplay
 - [ ] Playtest and iterate on difficulty curve
 - [ ] Verify lifecycle handling (rotate, background, kill — no crashes)
+
+## 26 · Death-Screen Assist Preview
+
+- [ ] Buffer recent simulation snapshots around gameplay events for post-death replay windows
+- [ ] On death, run a sandbox replay with autopilot guidance through the failure segment
+- [ ] Show an optional "How to pass" preview on the death screen using the same game rules
 
 ---
 

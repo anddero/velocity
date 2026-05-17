@@ -17,7 +17,8 @@
 8. [Collision Detection](#8-collision-detection)
 9. [Input Handling](#9-input-handling)
 10. [Extensibility Hooks](#10-extensibility-hooks)
-11. [Open Questions & Decisions](#11-open-questions--decisions)
+11. [Testability, Simulation, and Assist Modes](#11-testability-simulation-and-assist-modes)
+12. [Open Questions & Decisions](#12-open-questions--decisions)
 
 ---
 
@@ -139,6 +140,27 @@ Main Thread (UI)         GL Thread (render)          Sensor Thread (input)
 - `GLSurfaceView` provides a dedicated GL thread. Both `GameLoop.tick()` and `Renderer.draw()` run on this thread sequentially per frame — simple, no cross-thread sync needed for game state.
 - `InputManager` receives sensor callbacks on the sensor thread; it writes to an `AtomicReference<Float>` (or similar lock-free slot) that `GameLoop` reads each tick.
 - Main thread handles Android UI (menus, pause overlay, HUD via `View` overlay on top of `GLSurfaceView`).
+
+### 3.4 Ports for Mockable Controller and Replaceable View
+
+Define explicit ports so game logic can run unchanged with different input sources and output surfaces:
+
+```kotlin
+interface ControlInputPort {
+    /** Normalized lateral intent in [-1f, +1f]. */
+    fun lateral(): Float
+}
+
+interface GameViewPort {
+    /** Receives immutable frame data from core simulation. */
+    fun render(frame: FrameSnapshot)
+}
+```
+
+- `SensorInputController` and `TouchInputController` implement `ControlInputPort` for player control.
+- Future `AutopilotController` and `ReplayController` implement the same interface, allowing drop-in replacement.
+- `OpenGlGameView` implements `GameViewPort` for shipping gameplay.
+- `HeadlessSimulationView` implements `GameViewPort` as a no-op sink for fast fairness/testing runs.
 
 ---
 
@@ -622,9 +644,66 @@ data class Material(
 
 The shader checks whether a texture is bound; if so, samples it using UV coords added to the vertex data.
 
+### 10.9 Autopilot and Death-Assist Preview → solver module + replay channel
+
+Add a `PathSolver` module that computes near-term feasible control trajectories against known chunk geometry:
+
+```kotlin
+interface PathSolver {
+    fun solve(window: SimulationWindow): ControlTrack?
+}
+```
+
+- During gameplay (optional assist mode), `AutopilotController` streams `ControlTrack` samples into `ControlInputPort`.
+- On death, keep a short ring-buffer of recent world/input snapshots so a post-death preview can replay the failing window and overlay the solver's corrected control track.
+- The preview must run through the same `GameLoop` and collision rules as live play (no teleport/cheat pathing).
+
 ---
 
-## 11. Open Questions & Decisions
+## 11. Testability, Simulation, and Assist Modes
+
+### 11.1 Headless Simulation Harness
+
+Run deterministic batches without rendering:
+
+```kotlin
+class SimulationRunner(
+    private val mapSource: MapSource,
+    private val controller: ControlInputPort,
+    private val gameLoop: GameLoop,
+) {
+    fun run(seed: Long, ticks: Int): SimulationResult { ... }
+}
+```
+
+- Uses fixed-step updates only; no `GLSurfaceView` required.
+- Produces reproducible metrics (survival distance, near-miss counts, impossible-state detection).
+- Gate generator changes using statistical thresholds (for example, fail if impossible runs exceed limit across N seeds).
+
+### 11.2 Controller Mocking Strategy
+
+- Wrap human input behind `ControlInputPort` and inject via constructor/DI into `GameLoop`.
+- Unit tests provide scripted/mock controllers (`FixedInputController`, `SequenceInputController`) to test collision and fairness edge cases cheaply.
+- Autopilot is treated as another controller implementation, not a special case in movement code.
+
+### 11.3 Replaceable View Strategy
+
+- Game core emits immutable `FrameSnapshot` objects from simulation state.
+- Renderers consume snapshots and never mutate gameplay state.
+- This keeps OpenGL replaceable (debug wireframe, alternate backend, or offscreen verification pipeline).
+
+### 11.4 Death-Screen Autopilot Preview Flow
+
+1. Collision occurs; transition to `DEAD` and freeze player input.
+2. Build a short replay window around the failure point from buffered snapshots.
+3. Invoke `PathSolver` for that window to produce a feasible control sequence.
+4. Run preview simulation in a sandbox state and render to death-screen inset/fullscreen overlay.
+
+This gives "what you should have done" guidance while preserving gameplay rule parity.
+
+---
+
+## 12. Open Questions & Decisions
 
 | # | Question | Options | Recommendation |
 |---|---|---|---|
@@ -637,6 +716,9 @@ The shader checks whether a texture is bound; if so, samples it using UV coords 
 | Q7 | **Testing strategy** | Unit tests for math/generation/collision; manual play-testing for feel. | **Unit test the deterministic parts** (generation with seed, collision geometry). Renderer is tested by eye. |
 | Q8 | **Android target SDK** | 34 (latest stable as of 2026) | **Target SDK 35**, min SDK 26. |
 | Q9 | **Build structure** | Single module or multi-module Gradle? | **Single module** for Phase 1. Extract `engine` module when/if it grows large. |
+| Q10 | **Simulation feasibility threshold** | Strict (0 impossible seeds) vs tolerance-based threshold. | Start tolerance-based (small threshold), tighten after telemetry from playtests. |
+| Q11 | **Autopilot UX scope for MVP+1** | Full run autopilot, assist-on-death only, or hidden debug feature. | Start with death-screen assist preview first; keep full autopilot as optional toggle later. |
+| Q12 | **Path solver style** | Heuristic lookahead, dynamic programming, or constrained MPC-like optimizer. | Start with heuristic lookahead + collision checks; upgrade only if needed. |
 
 ---
 
